@@ -12,9 +12,7 @@ def get_edgeMap(node):
         edges["y"].append(int(edgeMap.find("{http://www.nih.gov}yCoord").text))
     return edges
 
-
-def main(fileName="158.xml"):
-
+def parse_xml(fileName="158.xml"):
     ctr = 0
     root = ET.parse(fileName).getroot()
     data = {"uid": -1, "readingSession": []}
@@ -31,11 +29,11 @@ def main(fileName="158.xml"):
             rs.append(n)
 
         data["readingSession"].append(rs)
-    # pp.pprint(data)
+
 
 if __name__ == "__main__":
     print str(sys.argv)
     if len(sys.argv) > 2:
-        main(sys.argv[1])
+        parse_xml(sys.argv[1])
     else:
-        main()
+        parse_xml()
