@@ -23,15 +23,16 @@ def parse_xml(fileName=None):
     data = {"uid": -1, "readingSession": []}
 
     for readingSession in root.iter("{http://www.nih.gov}readingSession"):
-        rs = []
+        rs = {'nodules': []}
 
         for nodule in readingSession.iter("{http://www.nih.gov}unblindedReadNodule"):
             n = []
 
             for roi in nodule.iter("{http://www.nih.gov}roi"):
-                test = get_edgeMap(roi)
-                n.append(test)
-            rs.append(n)
+                image_uid = roi.find("{http://www.nih.gov}imageSOP_UID").text
+                edge_map = get_edgeMap(roi)
+                n.append({'image_uid': image_uid, 'edge_map': edge_map})
+            rs['nodules'].append(n)
 
         data["readingSession"].append(rs)
     return data
