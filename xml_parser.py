@@ -2,15 +2,13 @@
 import sys
 import xml.etree.ElementTree as ET
 
-XML_PATH = "c:/ece457b/LIDC-IDRI/LIDC-IDRI-0003/1.3.6.1.4.1.14519.5.2.1.6279.6001.101370605276577556143013894866/1.3.6.1.4.1.14519.5.2.1.6279.6001.170706757615202213033480003264"
-
-def get_edgeMap(node):
+def get_edgeMap(node, ns):
     edges = {"x": [], "y": [], "z": -1}
 
-    edges["z"] = float(node.find("{http://www.nih.gov}imageZposition").text)
-    for edgeMap in node.iter("{http://www.nih.gov}edgeMap"):
-        edges["x"].append(int(edgeMap.find("{http://www.nih.gov}xCoord").text))
-        edges["y"].append(int(edgeMap.find("{http://www.nih.gov}yCoord").text))
+    edges["z"] = float(node.find(ns+"imageZposition").text)
+    for edgeMap in node.iter(ns+"edgeMap"):
+        edges["x"].append(int(edgeMap.find(ns+"xCoord").text))
+        edges["y"].append(int(edgeMap.find(ns+"yCoord").text))
     return edges
 
 def parse_xml(fileName=None):
@@ -19,18 +17,28 @@ def parse_xml(fileName=None):
         return False
 
     ctr = 0
-    root = ET.parse(XML_PATH+"/"+fileName).getroot()
+    root = ET.parse(fileName).getroot()
     data = {"uid": -1, "readingSession": []}
+    ns = ""
+    if root.tag.find("{") >= 0:
+        ns = root.tag[root.tag.find("{"):root.tag.find("}")+1]
 
-    for readingSession in root.iter("{http://www.nih.gov}readingSession"):
+    header = root.find(ns+"ResponseHeader")
+    data['version'] = header.find(ns+"Version").text
+    
+    if not data['version'] == '1.8.1':
+        print "Warning: xml version not supported: " + str(data['version'])
+        return False
+    
+    for readingSession in root.iter(ns+"readingSession"):
         rs = {'nodules': []}
 
-        for nodule in readingSession.iter("{http://www.nih.gov}unblindedReadNodule"):
+        for nodule in readingSession.iter(ns+"unblindedReadNodule"):
             n = []
 
-            for roi in nodule.iter("{http://www.nih.gov}roi"):
-                image_uid = roi.find("{http://www.nih.gov}imageSOP_UID").text
-                edge_map = get_edgeMap(roi)
+            for roi in nodule.iter(ns+"roi"):
+                image_uid = roi.find(ns+"imageSOP_UID").text
+                edge_map = get_edgeMap(roi, ns)
                 n.append({'image_uid': image_uid, 'edge_map': edge_map})
             rs['nodules'].append(n)
 

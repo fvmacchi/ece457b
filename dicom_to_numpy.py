@@ -10,8 +10,6 @@ from matplotlib.lines import Line2D
 
 import pprint as pp
 
-DICOM_PATH = "./LIDC-IDRI/"
-
 
 '''
 Class to hold the arrays represnting the dicom figures
@@ -45,7 +43,7 @@ class DicomArray():
     Read the dicoms into a numpy array from the path given
     default path: './LIDC-IDRI/'
     '''
-    def read_dicom(self, path=DICOM_PATH):
+    def read_dicom(self, path):
         dicomList = [] # empty list
         self.dicomList = dicomList
         for dirName, subdirList, fileList in os.walk(path):
@@ -102,26 +100,27 @@ class DicomArray():
     '''
     Draw a border based on given x and y arrays
     '''
-    def drawEdgeMap(self,fig, x, y):
-        ax = pyplot.subplot(111)
-        line = Line2D(x,y)
-        ax.add_line(line)
-        pyplot.show()
+    def drawEdgeMap(self, plt, x, y):
+        if len(x) == 1 and len(y) == 1:
+            circle = plt.Circle((x[0],y[0]),8, ec='b', lw=2, fill=False)
+            plt.gcf().gca().add_artist(circle)
+        else:
+            plt.plot(x,y)
+            # ax = plt.subplot(111)
+            # line = Line2D(x,y)
+            # ax.add_line(line)
 
 
     '''
     Create the figure for the dicom
     show: open the dicom viewer (default = True)
     '''
-    def plot_dicom(self, dicomFile, show=True):
-        fig = pyplot.figure(1, dpi=100)
+    def plot_dicom(self, plt, dicomFile):
+        fig = plt.figure()
         ax1 = fig.add_subplot(111)
-        pyplot.axes().set_aspect('equal', 'datalim')
-        pyplot.set_cmap(pyplot.gray())
-        pyplot.pcolormesh(self.x,self.y,self.get_dicom(dicomFile).pixel_array)
-        if show:
-            pyplot.show()
-        return fig
+        plt.axes().set_aspect('equal', 'datalim')
+        plt.set_cmap(plt.gray())
+        plt.pcolormesh(self.x,self.y,self.get_dicom(dicomFile).pixel_array)
     
     '''
     Gets dicom data of the given file

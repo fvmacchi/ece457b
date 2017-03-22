@@ -1,31 +1,18 @@
 import pprint as pp
+import os
 
 from dicom_to_numpy import DicomArray
 from xml_parser import *
-
-da = DicomArray()
-
-# uncomment the code for the dataset you want to use:
-
-### NSCLC Dataset
-# da.read_dicom("./NSCLC-Radiomics/")
-# figure = da.plot_dicom(77)
-### -------------
+from subject import Subject
+import matplotlib.pyplot as plt
 
 ### LIDC Dataset
-da.read_dicom("./LIDC-IDRI/")
-xml_filename = "072.xml"
-data = parse_xml(xml_filename)
-uid = data["readingSession"][0]['nodules'][0][0]['image_uid']
-d_file = da.find_image_uid(uid)
-figure = da.plot_dicom(d_file, False)
-if not data:
-    print "XML not parsed"
-else:
-    x = data["readingSession"][0]['nodules'][0][0]['edge_map']["x"]
-    y = data["readingSession"][0]['nodules'][0][0]['edge_map']["y"]
-    z = data["readingSession"][0]['nodules'][0][0]['edge_map']["z"]
-    da.drawEdgeMap(figure, x,y)
-### -------------
-
+subject_id = "LIDC-IDRI-0003"
+path = os.path.abspath(os.path.join("./LIDC-IDRI/", subject_id))
+subject = Subject(subject_id, path)
+subject.load_study_instances()
+study_instance = subject.get_study_instance("1.3.6.1.4.1.14519.5.2.1.6279.6001.101370605276577556143013894866")
+for nodule in study_instance.get_reading_sessions()[0].get_nodules():
+    nodule.draw_nodule_edge_images(plt, image_numbers=None)
+plt.show()
 
