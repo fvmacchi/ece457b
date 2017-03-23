@@ -2,6 +2,7 @@
 import sys
 import xml.etree.ElementTree as ET
 import subject
+from distutils.version import StrictVersion
 
 def get_edgeMap(node, ns):
     edges = {"x": [], "y": [], "z": -1}
@@ -27,7 +28,8 @@ def parse_xml(fileName=None):
     header = root.find(ns+"ResponseHeader")
     data['version'] = header.find(ns+"Version").text
     
-    if not data['version'] == '1.8.1':
+    if (StrictVersion(data['version']) < StrictVersion("1.7") or
+        StrictVersion(data['version']) > StrictVersion("1.8.1")):
         print "Warning: xml version not supported: " + str(data['version'])
         return False
     
