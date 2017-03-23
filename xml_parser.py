@@ -1,6 +1,7 @@
 
 import sys
 import xml.etree.ElementTree as ET
+import subject
 
 def get_edgeMap(node, ns):
     edges = {"x": [], "y": [], "z": -1}
@@ -30,19 +31,37 @@ def parse_xml(fileName=None):
         print "Warning: xml version not supported: " + str(data['version'])
         return False
     
+    reading_sessions = data["readingSession"]
     for readingSession in root.iter(ns+"readingSession"):
-        rs = {'nodules': []}
+        reading_session = subject.ReadingSession(len(reading_sessions))
+        reading_sessions.append(reading_session)
 
         for nodule in readingSession.iter(ns+"unblindedReadNodule"):
-            n = []
-
+            n = subject.Nodule(nodule.find(ns+"noduleID").text)
+            characteristics = nodule.find(ns+"characteristics")
+            if characteristics is not None:
+                malignancy = characteristics.find(ns+"malignancy")
+                if malignancy is not None:
+                    n.malignancy = malignancy.text
+                lobulation = characteristics.find(ns+"lobulation")
+                if lobulation is not None:
+                    n.lobulation = lobulation.text
+                spiculation = characteristics.find(ns+"spiculation")
+                if spiculation is not None:
+                    n.spiculation = spiculation.text
+                calcification = characteristics.find(ns+"calcification")
+                if calcification is not None:
+                    n.calcification = calcification.text
+            reading_session.add_nodule(n)
+            n.reading_session = reading_session
             for roi in nodule.iter(ns+"roi"):
                 image_uid = roi.find(ns+"imageSOP_UID").text
                 edge_map = get_edgeMap(roi, ns)
-                n.append({'image_uid': image_uid, 'edge_map': edge_map})
-            rs['nodules'].append(n)
+                nodule_image = subject.NoduleImage(image_uid)
+                nodule_image.nodule = n
+                nodule_image.set_edge_map(edge_map)
+                n.add_image(nodule_image)
 
-        data["readingSession"].append(rs)
     return data
 
 if __name__ == "__main__":

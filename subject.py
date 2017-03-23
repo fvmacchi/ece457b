@@ -8,8 +8,6 @@ class Subject:
         self.id = id
         self.path = path
         self.study_instances = {}
-        print self.path
-        print self.id
     
     def load_study_instances(self):
         for study_instance_path in filter(lambda d: not d.startswith('.'), os.listdir(self.path)):
@@ -17,6 +15,8 @@ class Subject:
             study_instance_path = os.path.join(self.path, study_instance_path)
             
             study_instance = StudyInstance(study_instance_id, study_instance_path)
+            study_instance.subject = self
+            study_instance.load()
             if not study_instance.is_valid():
                 continue
             
@@ -33,6 +33,12 @@ class StudyInstance:
     def __init__(self, id, path):
         self.id = id
         self.path = path
+        self.valid = True
+        self.subject = None
+        self.reading_sessions = []
+        
+    
+    def load(self):
         self.valid = False
         # verify there is only 1 series under study_instance
         series_paths = filter(lambda d: not d.startswith('.'), os.listdir(self.path))
@@ -52,9 +58,9 @@ class StudyInstance:
         self.dicom_array = DicomArray()
         self.dicom_array.read_dicom(series_path)
         
-        self.reading_sessions = []
-        for reading_session in xml_data['readingSession']:
-            self.reading_sessions.append(ReadingSession(self, reading_session))
+        self.reading_sessions = xml_data['readingSession']
+        for reading_session in self.reading_sessions:
+            reading_session.study_instance = self
         
         self.valid = True
     
@@ -69,24 +75,34 @@ class StudyInstance:
         
 
 class ReadingSession:
-    def __init__(self, study_instance, data):
-        self.study_instance = study_instance
+    def __init__(self, id):
+        self.id = str(id)
         self.nodules = []
-        for nodule in data["nodules"]:
-            nodule = Nodule(self, nodule)
-            self.nodules.append(nodule)
     
     def get_nodules(self):
         return self.nodules
+    
+    def add_nodule(self, nodule):
+        self.nodules.append(nodule)
             
                 
 class Nodule:
-    def __init__(self, reading_session, image_data):
-        self.reading_session = reading_session
+    def __init__(self, id):
+        self.id = id
         self.images = []
-        for image in image_data:
-            image = NoduleImage(self, image)
-            self.images.append(image)
+        self.malignancy = None
+        self.lobulation = None
+        self.spiculation = None
+        self.calcification = None
+    
+    def is_small(self):
+        return self.images[0].is_small()
+    
+    def get_images(self):
+        return self.images
+    
+    def add_image(self, image):
+        self.images.append(image)
     
     def draw_nodule_edge_images(self, plt, image_numbers=None):
         if image_numbers == None:
@@ -98,14 +114,34 @@ class Nodule:
             self.images[num].draw_edges(plt)
         
 class NoduleImage:
-    def __init__(self, nodule, data):
-        self.nodule = nodule
-        self.uid = data['image_uid']
-        self.edge_map = data['edge_map']
-        self.dicom_array = self.nodule.reading_session.study_instance.get_dicom_array()
+    def __init__(self, id):
+        self.id = id
+        self.nodule = None
+        self.dicom_array = None
+    
+    def set_edge_map(self, edge_map):
+        self.edge_map = edge_map
+    
+    def is_small(self):
+        return len(self.edge_map['x']) == 1
+    
+    def get_rectangle_boundary(self):
+        min_x = min(self.edge_map['x'])
+        max_x = max(self.edge_map['x'])
+        min_y = min(self.edge_map['y'])
+        max_y = max(self.edge_map['y'])
+        return {'x': min_x, 'y': min_y, 'width': max_x-min_x+1, 'height': max_y-min_y+1}
+    
+    def _get_dicom_array(self):
+        if self.dicom_array == None:
+            self.dicom_array = self.nodule.reading_session.study_instance.get_dicom_array()
+        return self.dicom_array
+    
+    def get_file(self):
+        return self._get_dicom_array().find_image_uid(self.id)
     
     def draw_edges(self, plt):
-        d_file = self.dicom_array.find_image_uid(self.uid)
-        figure = self.dicom_array.plot_dicom(plt, d_file)
-        self.dicom_array.drawEdgeMap(plt, self.edge_map['x'], self.edge_map['y'])
+        d_file = self.get_file()
+        figure = self._get_dicom_array().plot_dicom(plt, d_file)
+        self._get_dicom_array().drawEdgeMap(plt, self.edge_map['x'], self.edge_map['y'])
         
